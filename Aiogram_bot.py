@@ -4,7 +4,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
-from Sqlite import create_profile, edit_profile, db_start, delete_profile,check_info
+from Sqlite import create_profile, edit_profile, db_start, delete_profile, check_info
 
 
 API_Token = '6593176333:AAG0-x3uRy3bbieWzNAtIymEHujK1V_bFpE'
@@ -38,7 +38,7 @@ admin_kb.add(['/Удалить профиль']).add(['/Изменить анк�
 kb1 = ReplyKeyboardMarkup()
 kb1.add(KeyboardButton('/Старт'))
 kb1.add(KeyboardButton('/Зарегистрироваться'))
-kb1.add(KeyboardButton('/Показать тех,кто рядом'))
+kb1.add(KeyboardButton('/Показать тех,кто рядом', ))
 kb1.add(KeyboardButton('/Профиль'))
 kb1.add(KeyboardButton('/Стоп'))
 
@@ -65,10 +65,10 @@ async def load_name(message: types.Message, state: FSMContext):
     await ProfileStateGroup.next()
 
 
-@dp.message_handler(content_types=['photo'],state=ProfileStateGroup.photo)
+@dp.message_handler(content_types=types.ContentTypes.PHOTO, state=ProfileStateGroup.photo)
 async def load_photo(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
-        data['photo'] = message.photo[0].file_id
+        data["photo"] = message.photo[0].file_id
     await bot.send_message(chat_id=message.from_user.id,
                            text='Чем ты занимаешься?')
     await ProfileStateGroup.next()
@@ -87,17 +87,25 @@ async def load_hobbies(message: types.Message, state: FSMContext):
 async def load_leisure(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['leisure'] = message.text
-    await  bot.send_message(chat_id=message.from_user.id,
-                            text='Спасибо за пройденную регистрацию!!')
+    await bot.send_message(chat_id=message.from_user.id,
+                        text='Спасибо за пройденную регистрацию!!')
+    proxy_data = await dp.storage.proxy().get_data(chat=message.from_user.id)
+    await bot.send_message(text=f'Данные: {proxy_data}')
     await edit_profile(state, user_id=message.from_user.id)
     await state.finish()
 
 
-@dp.message_handler(commands=['Профиль'])
-async def check_profile(message: types.Message):
-    await check_info(user_id=message.from_user.id)
-    await bot.send_message(text='',reply_markup=admin_kb)
 
+@dp.message_handler(commands=['Профиль'])
+async def check_profile(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        await bot.send_photo(photo=data["photo"],
+                             chat_id=message.from_user.id,
+                             caption=f'Имя: {data["name"]}\n'
+                             f'Увлечение: {data["hobbies"]}\n'
+                                 f'Занятие: {data["leisure"]}')
+    await edit_profile(state,user_id=message.from_user.id)
+    await state.finish()
 
 @dp.message_handler(commands=['admin'])
 async def get_admin(message: types.Message):
@@ -107,7 +115,7 @@ async def get_admin(message: types.Message):
                            chat_id=message.from_user.id)
 
 
-@dp.message_handler(commands=['Список пользователй'])
+@dp.message_handler(commands=['Список пользователей'])
 async def get_list(message: types.Message):
     #await delete_profile(user_id=message.from_user.id)
     await bot.send_message(text='Ваш профиль успешно удалён',
@@ -116,7 +124,7 @@ async def get_list(message: types.Message):
 
 @dp.message_handler(commands=['Список поисковых запросов'])
 async def get_find(message: types.Message):
-    #await check_info(user_id=message.from_user.id)
+#    await check_info(user_id=message.from_user.id)
     await bot.send_message(text='')
 
 
